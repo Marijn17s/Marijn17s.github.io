@@ -1,26 +1,21 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Dapper;
-using Microsoft.AspNetCore.Http;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using RaceFlowAPI.Controllers;
 using RaceFlowAPI.Database;
 using RaceFlowAPI.Models;
-using Serilog;
 
 namespace RaceFlowAPI.Tests.Controllers;
 
 [TestClass]
-public class RacesControllerTest
+public class CarsControllerTest
 {
     private static int _createdId;
-    private static readonly Race TestRace = new()
+    private static readonly Car TestCar = new()
     {
-        Laps = 9999,
-        StartTime = DateTime.Now,
-        EndTime = DateTime.Now + TimeSpan.FromHours(1)
+        DriverId = 1,
+        RaceNumber = 9999
     };
     
     [TestMethod]
@@ -31,8 +26,8 @@ public class RacesControllerTest
 
         try
         {
-            const string sql = "INSERT INTO races (laps, start_time, end_time) VALUES(@Laps, @StartTime, @EndTime); SELECT LAST_INSERT_ID();";
-            var result = await connection.QuerySingleAsync<int>(sql, TestRace);
+            const string sql = "INSERT INTO cars (racenumber, driver_id) VALUES(@RaceNumber, @DriverId); SELECT LAST_INSERT_ID();";
+            var result = await connection.QuerySingleAsync<int>(sql, TestCar);
             _createdId = result;
             Assert.AreNotEqual(0, _createdId);
         }
@@ -40,21 +35,21 @@ public class RacesControllerTest
         finally
         {
             await DatabaseClient.CloseConnectionAsync(connection);
-            await DeleteRace(_createdId);
+            await DeleteCar(_createdId);
         }
     }
     
     [TestMethod]
     public async Task TestGetAll()
     {
-        _createdId = await CreateRace();
+        _createdId = await CreateCar();
         DefaultTypeMap.MatchNamesWithUnderscores = true;
         var connection = await DatabaseClient.GetOpenConnectionAsync();
 
         try
         {
-            const string sql = "SELECT * FROM races";
-            var result = await connection.QueryAsync<Race>(sql);
+            const string sql = "SELECT * FROM cars";
+            var result = await connection.QueryAsync<Car>(sql);
             var list = result.ToList();
             await DatabaseClient.CloseConnectionAsync(connection);
             Assert.AreNotEqual(0, list.Count);
@@ -63,62 +58,61 @@ public class RacesControllerTest
         finally
         {
             await DatabaseClient.CloseConnectionAsync(connection);
-            await DeleteRace(_createdId);
+            await DeleteCar(_createdId);
         }
     }
     
     [TestMethod]
     public async Task TestGetSingle()
     {
-        _createdId = await CreateRace();
+        _createdId = await CreateCar();
         DefaultTypeMap.MatchNamesWithUnderscores = true;
         var connection = await DatabaseClient.GetOpenConnectionAsync();
         
         try
         {
-            const string sql = "SELECT * FROM races WHERE id = @Id";
+            const string sql = "SELECT * FROM cars WHERE id = @Id";
             var parameters = new { id = _createdId };
-            var result = await connection.QuerySingleOrDefaultAsync<Race>(sql, parameters);
+            var result = await connection.QuerySingleOrDefaultAsync<Car>(sql, parameters);
             await DatabaseClient.CloseConnectionAsync(connection);
-            Assert.AreEqual(TestRace.Laps, result.Laps);
-            Assert.AreEqual(TestRace.StartTime, result.StartTime);
-            Assert.AreEqual(TestRace.EndTime, result.EndTime);
+            Assert.AreEqual(TestCar.DriverId, result.DriverId);
+            Assert.AreEqual(TestCar.RaceNumber, result.RaceNumber);
         }
         catch {}
         finally
         {
             await DatabaseClient.CloseConnectionAsync(connection);
-            await DeleteRace(_createdId);
+            await DeleteCar(_createdId);
         }
     }
     
     [TestMethod]
     public async Task TestUpdate()
     {
-        _createdId = await CreateRace();
+        _createdId = await CreateCar();
         DefaultTypeMap.MatchNamesWithUnderscores = true;
         var connection = await DatabaseClient.GetOpenConnectionAsync();
 
         try
         {
-            TestRace.Id = _createdId;
-            TestRace.Laps = 9998;
-            const string sql = "UPDATE races SET laps = @Laps, start_time = @StartTime, end_time = @EndTime WHERE id = @Id";
-            var result = await connection.ExecuteAsync(sql, TestRace);
+            TestCar.Id = _createdId;
+            TestCar.RaceNumber = 9998;
+            const string sql = "UPDATE cars SET racenumber = @RaceNumber, driver_id = @DriverId WHERE id = @Id";
+            var result = await connection.ExecuteAsync(sql, TestCar);
             Assert.AreNotEqual(0, result);
         }
         catch {}
         finally
         {
             await DatabaseClient.CloseConnectionAsync(connection);
-            await DeleteRace(_createdId);
+            await DeleteCar(_createdId);
         }
     }
     
     [TestMethod]
     public async Task TestDelete()
     {
-        _createdId = await CreateRace();
+        _createdId = await CreateCar();
         DefaultTypeMap.MatchNamesWithUnderscores = true;
         var connection = await DatabaseClient.GetOpenConnectionAsync();
         
@@ -126,7 +120,7 @@ public class RacesControllerTest
         {
             Assert.AreNotEqual(0, _createdId);
 
-            const string sql = "DELETE FROM races WHERE id = @Id";
+            const string sql = "DELETE FROM cars WHERE id = @Id";
             var parameters = new { id = _createdId };
             var result = await connection.ExecuteAsync(sql, parameters);
             Assert.AreNotEqual(0, result);
@@ -135,19 +129,19 @@ public class RacesControllerTest
         finally
         {
             await DatabaseClient.CloseConnectionAsync(connection);
-            await DeleteRace(_createdId);
+            await DeleteCar(_createdId);
         }
     }
     
-    private static async Task<int> CreateRace()
+    private static async Task<int> CreateCar()
     {
         DefaultTypeMap.MatchNamesWithUnderscores = true;
         var connection = await DatabaseClient.GetOpenConnectionAsync();
 
         try
         {
-            const string sql = "INSERT INTO races (racenumber, driver_id) VALUES(@RaceNumber, @DriverId); SELECT LAST_INSERT_ID();";
-            return await connection.QuerySingleAsync<int>(sql, TestRace);
+            const string sql = "INSERT INTO cars (racenumber, driver_id) VALUES(@RaceNumber, @DriverId); SELECT LAST_INSERT_ID();";
+            return await connection.QuerySingleAsync<int>(sql, TestCar);
         }
         catch (Exception ex)
         {
@@ -159,14 +153,14 @@ public class RacesControllerTest
         }
     }
     
-    private static async Task DeleteRace(int id)
+    private static async Task DeleteCar(int id)
     {
         DefaultTypeMap.MatchNamesWithUnderscores = true;
         var connection = await DatabaseClient.GetOpenConnectionAsync();
         
         try
         {
-            const string sql = "DELETE FROM races WHERE id = @id";
+            const string sql = "DELETE FROM cars WHERE id = @id";
             var parameters = new { id };
             await connection.ExecuteAsync(sql, parameters);
         }
