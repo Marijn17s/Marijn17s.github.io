@@ -21,7 +21,13 @@ jobs:
         with:
           dotnet-version: '8.x'
 
-      - name: Build with dotnet
+      - name: Restore dependencies
+        run: dotnet restore
+
+      - name: Run dotnet format (Code Linting)
+        run: dotnet format --verify-no-changes
+
+      - name: Build
         run: dotnet build --configuration Release
 
       - name: Test
@@ -43,7 +49,7 @@ jobs:
       name: 'Production'
       url: ${{ steps.deploy-to-webapp.outputs.webapp-url }}
     permissions:
-      id-token: write #This is required for requesting the JWT
+      id-token: write # This is required for requesting the JWT
 
     steps:
       - name: Download artifact from build job
